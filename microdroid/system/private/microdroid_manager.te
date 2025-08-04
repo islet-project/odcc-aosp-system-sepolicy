@@ -17,12 +17,22 @@ allow microdroid_manager vd_device:blk_file rw_file_perms;
 # microdroid_manager verifies DM-verity mounted APK payload
 allow microdroid_manager dm_device:blk_file r_file_perms;
 
+# Allow microdroid_manager to discover block device serial numbers via sysfs
+allow microdroid_manager sysfs:dir { read open };
+allow microdroid_manager sysfs:file { read open getattr };
+
+# Allow microdroid_manager to search network interfaces via sysfs
+allow microdroid_manager sysfs_net:dir search;
+
 # microdroid_manager can query AVF flags in the device tree
 r_dir_file(microdroid_manager, proc_dt_avf)
 r_dir_file(microdroid_manager, sysfs_dt_avf)
 
 # Read config from the open-dice driver.
 allow microdroid_manager open_dice_device:chr_file rw_file_perms;
+
+# Perform ioctl on RSI driver
+allow microdroid_manager rsi_device:chr_file rw_file_perms;
 
 # In case Microdroid VM is started with microdroid vendor partition, the first_stage_init
 # will derive a microdroid vendor dice node, and write a resulting dice chain into file
@@ -48,6 +58,9 @@ allow microdroid_manager self:global_capability_class_set sys_admin;
 # Allow microdroid_manager to remove capabilities from it's capability bounding set.
 allow microdroid_manager self:global_capability_class_set setpcap;
 
+# Fix microdroid_manager chown capability denial for file ownership changes
+allow microdroid_manager self:global_capability_class_set chown;
+
 # Allow microdroid_manager to start payload tasks in a different uid/gid.
 domain_auto_trans(microdroid_manager, microdroid_app_exec, microdroid_app)
 domain_auto_trans(microdroid_manager, compos_exec, compos)
@@ -63,14 +76,36 @@ domain_auto_trans(microdroid_manager, encryptedstore_exec, encryptedstore)
 # Microdroid Manager needs read related permission for syncing encrypted storage fs
 allow microdroid_manager encryptedstore_file:dir r_dir_perms;
 
+# Fix microdroid_manager encryptedstore_file read/open/setattr access for model file
+allow microdroid_manager encryptedstore_file:file { read open getattr setattr };
+
 # Allow microdroid_manager to run kexec to load crashkernel
 domain_auto_trans(microdroid_manager, kexec_exec, kexec)
+
+# Allow microdroid_manager to run ip command via toybox for network configuration
+domain_auto_trans(microdroid_manager, system_file, toolbox)
+dontaudit microdroid_manager system_file:file { execute_no_trans };
+
+# Allow microdroid_manager to run sntp via toybox for NTP time synchronization
+domain_auto_trans(microdroid_manager, toolbox_exec, toolbox)
+
+# Allow microdroid_manager to create and use UDP sockets for network operations
+allow microdroid_manager self:udp_socket { create_socket_perms_no_ioctl };
+allowxperm microdroid_manager self:udp_socket ioctl { 0x8933 };
 
 # Let microdroid_manager kernel-log.
 allow microdroid_manager kmsg_device:chr_file w_file_perms;
 
 # Let microdroid_manager to create a vsock connection back to the host VM
 allow microdroid_manager self:vsock_socket { create_socket_perms_no_ioctl };
+
+# Allow microdroid_manager to read network interface info via sysfs (for loopback/DHCP setup)
+allow microdroid_manager sysfs_net:dir { read open };
+allow microdroid_manager sysfs_net:file { read open getattr };
+
+# Allow microdroid_manager to configure network routes after DHCP
+allow microdroid_manager self:netlink_route_socket { create_socket_perms_no_ioctl nlmsg_write nlmsg_read };
+allow microdroid_manager self:global_capability_class_set net_admin;
 
 # Allow microdroid_manager to read the CID of the VM.
 allow microdroid_manager vsock_device:chr_file { ioctl open read };
@@ -152,4 +187,5 @@ neverallow microdroid_manager {
   -encryptedstore
   -zipfuse
   -kexec
+  -toolbox
 }:process transition;

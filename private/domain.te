@@ -1646,6 +1646,7 @@ neverallow {
   -rs # spawned by appdomain, so carryover the exception above
   -runas
   -system_server
+  -virtualizationmanager # search app data dir for microdroid config/disk images
   -zygote
 } {
   privapp_data_file
@@ -1711,6 +1712,7 @@ neverallow {
   -app_zygote
   -artd # compile secondary dex files
   -installd
+  -kvmtool # opens instance.img directly from app data dir
   -rs # spawned by appdomain, so carryover the exception above
 } {
   privapp_data_file
@@ -1760,6 +1762,7 @@ neverallow {
   -installd
   -priv_app
   -virtualizationmanager
+  -kvmtool
 } staging_data_file:dir *;
 neverallow {
   domain
@@ -1774,6 +1777,7 @@ neverallow {
   -shell
   -virtualizationmanager
   -crosvm
+  -kvmtool
 } staging_data_file:file *;
 neverallow { domain -init -system_server -installd} staging_data_file:dir no_w_dir_perms;
 # apexd needs the link and unlink permissions, so list every `no_w_file_perms`
@@ -1912,6 +1916,7 @@ define(`dac_override_allowed', `{
   uncrypt
   vendor_init
   vold
+  virtualizationmanager
   vold_prepare_subdirs
   zygote
 }')
@@ -2160,6 +2165,7 @@ neverallow {
   userdebug_or_eng(`-virtualizationmanager')
   userdebug_or_eng(`-virtualizationservice')
   userdebug_or_eng(`-crosvm')
+  userdebug_or_eng(`-kvmtool')
 } shell_data_file:file open;
 
 # In addition to the symlink reading restrictions above, restrict
@@ -2207,6 +2213,7 @@ neverallow {
   userdebug_or_eng(`-uncrypt')
   userdebug_or_eng(`-virtualizationmanager')
   userdebug_or_eng(`-crosvm')
+  userdebug_or_eng(`-kvmtool')
 } shell_data_file:dir search;
 
 # respect system_app sandboxes

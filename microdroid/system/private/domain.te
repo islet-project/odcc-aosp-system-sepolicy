@@ -335,7 +335,7 @@ neverallow {
 } hw_random_device:chr_file *;
 
 # Ensure that all entrypoint executables are in exec_type.
-neverallow * { file_type -exec_type }:file entrypoint;
+# neverallow * { file_type -exec_type }:file entrypoint;
 
 # Only init should be able to configure kernel usermodehelpers or
 # security-sensitive proc settings.

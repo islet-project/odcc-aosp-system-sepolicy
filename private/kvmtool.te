@@ -1,0 +1,122 @@
+# Domain for kvmtool (lkvm) - hypervisor for Realm Computing VMs.
+# Mirrors crosvm domain; created because crosvm neverallows restrict kvm_device to crosvm only.
+
+type kvmtool, domain, coredomain;
+type kvmtool_exec, system_file_type, exec_type, file_type;
+type kvmtool_tmpfs, file_type;
+
+# Let kvmtool open VM manager devices such as /dev/kvm.
+allow kvmtool vm_manager_device_type:chr_file rw_file_perms;
+
+# Let kvmtool create temporary files.
+tmpfs_domain(kvmtool)
+
+# Let kvmtool receive file descriptors from VirtualizationService.
+allow kvmtool virtualizationmanager:fd use;
+# Let kvmtool use file descriptors passed from the calling app (ptmx, pipes, sockets)
+# via VirtualizationService binder calls.
+allow kvmtool untrusted_app:fd use;
+# Allow kvmtool to read/write on app-owned sockets and pipes passed as fds
+# (console/log output and control channels for the VM).
+allow kvmtool untrusted_app:unix_stream_socket { read write };
+allow kvmtool untrusted_app:fifo_file write;
+
+# Allow sending VirtualizationService the failure reason and console/log from the VM via pipe.
+allow kvmtool virtualizationmanager:fifo_file write;
+
+# Files passed as file descriptors from VirtualizationService — no open needed.
+allow kvmtool {
+  staging_data_file
+  apk_data_file
+  app_data_file
+  privapp_data_file
+  apex_compos_data_file
+  apex_virt_data_file
+  shell_data_file
+  vendor_microdroid_file
+}:file { getattr read ioctl lock };
+
+# Disk images and instance.img are opened directly by kvmtool (not via FD passing).
+# Neverallow exemption for open added in virtualizationservice.te.
+allow kvmtool virtualizationservice_data_file:file { getattr open read ioctl lock };
+
+# Allow access to the directory where the composite disk images and VM sockets are.
+allow kvmtool virtualizationservice_data_file:dir { search getattr write add_name };
+
+# Allow kvmtool to create its control socket (VmRunApp.sock) in the VS data dir.
+allow kvmtool virtualizationservice_data_file:sock_file create;
+
+# Allow kvmtool to tune for performance.
+allow kvmtool self:global_capability_class_set sys_nice;
+
+# Let kvmtool access its control socket as created by VS.
+allow kvmtool virtualizationmanager:unix_stream_socket { accept read write getattr getopt };
+
+# Allow kvmtool to pipe console log to shell or app.
+allow kvmtool adbd:fd use;
+allow kvmtool adbd:unix_stream_socket { read write };
+allow kvmtool devpts:chr_file { read write getattr ioctl };
+
+# The instance image and composite image should be writable (mutable disks).
+# app_data_file (instance.img) is opened directly by kvmtool, not via FD passing.
+allow kvmtool {
+  virtualizationservice_data_file
+  app_data_file
+  privapp_data_file
+  apex_compos_data_file
+  apex_virt_data_file
+}:file { open write };
+
+# kvmtool can write files in /data/local/tmp used for instance.img and test artifacts.
+# open is not granted here as files are expected to be opened by the owner and passed as FD,
+# except in debug builds (see below).
+allow kvmtool shell_data_file:file write;
+
+# kvmtool may inherit write-only pipe from virtualizationmanager for console/log forwarding;
+# suppress spurious read denial.
+dontaudit kvmtool virtualizationmanager:fifo_file { read getattr };
+
+# KVM guest memory (kvm-gmem anon_inode) - required for VM execution via KVM
+allow kvmtool self:anon_inode { create write };
+
+# TCP socket for network interface queries (SIOCGIFFLAGS/SIOCGIFADDR ioctls in virtio-net)
+allow kvmtool self:tcp_socket create;
+
+# Allow kvmtool to use the TAP fd pre-configured by vmnic (via SCM_RIGHTS).
+# vmnic (root:vpn) opens /dev/net/tun, calls TUNSETIFF to create avf_tap_fixed,
+# then passes the ready fd to virtmgr → kvmtool via --network fd=N,nosetip=1.
+# kvmtool never calls open() on tun_device directly — DAC would block it anyway
+# (crw-rw---- system:vpn, kvmtool runs as app uid). open is therefore NOT needed.
+#
+# Required ioctls on the inherited fd:
+#   TUNSETIFF      — re-attach to existing avf_tap_fixed interface (AOSP lkvm prebuilt
+#                    calls TUNSETIFF unconditionally; succeeds on already-open fd)
+#   TUNGETIFF      — read interface name from pre-configured fd (virtio/net.c)
+#   TUNSETOFFLOAD  — configure virtio-net checksum/TSO offload flags
+#   TUNSETVNETHDRSZ — set virtio_net_hdr size for vnet header I/O
+allow kvmtool vmnic:fd use;
+allow kvmtool tun_device:chr_file { read write ioctl };
+allowxperm kvmtool tun_device:chr_file ioctl { TUNSETIFF TUNGETIFF TUNSETOFFLOAD TUNSETVNETHDRSZ };
+
+# Allow kvmtool ioctl on tcp_socket for network interface queries (virtio-net).
+# SIOCGIFFLAGS=0x8913, SIOCGIFADDR=0x8914 — in unpriv_sock_ioctls but explicit allowxperm
+# needed because domain→domain global rule does not expand correctly for MCS-labeled sockets.
+allow kvmtool self:tcp_socket ioctl;
+allowxperm kvmtool self:tcp_socket ioctl { 0x8913 0x8914 };
+
+# Allow kvmtool to write to kmsg for early debug output.
+allow kvmtool kmsg_debug_device:chr_file w_file_perms;
+
+# Let kvmtool open test artifacts under /data/local/tmp (e.g. custom disk image).
+# Neverallow exemption added in domain.te.
+userdebug_or_eng(`
+  allow kvmtool shell_data_file:dir search;
+  allow kvmtool shell_data_file:file open;
+')
+
+# Only virtualizationmanager can run kvmtool.
+neverallow {
+  domain
+  -kvmtool
+  -virtualizationmanager
+} kvmtool_exec:file no_x_file_perms;
