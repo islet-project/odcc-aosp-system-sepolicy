@@ -207,6 +207,10 @@ binder_call(shell, virtualizationservice)
 # through the system property.
 get_prop(shell, avf_virtualizationservice_prop)
 
+# Allow shell to set AVF Realm Computing control properties
+# (setprop persist.avf.kvmtool true / setprop persist.avf.realm true)
+set_prop(shell, avf_prop)
+
 # Allow reading the outcome of perf_event_open LSM support test for CTS.
 get_prop(shell, init_perf_lsm_hooks_prop)
 

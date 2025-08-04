@@ -94,6 +94,10 @@ until_board_api(202504, `
 
 # Properties which should only be written by vendor_init
 system_vendor_config_prop(avf_virtualizationservice_prop)
+# Runtime control properties for AVF Realm Computing (kvmtool + realm mode)
+# system_internal_prop used (not system_vendor_config_prop) to allow shell to
+# set these properties for development/testing (setprop persist.avf.realm true).
+system_internal_prop(avf_prop)
 system_vendor_config_prop(high_barometer_quality_prop)
 
 typeattribute log_prop log_property_type;

@@ -25,6 +25,10 @@ allow virtualizationmanager { package_native_service permission_service }:servic
 # When virtualizationmanager execs a file with the crosvm_exec label, run it in the crosvm domain.
 domain_auto_trans(virtualizationmanager, crosvm_exec, crosvm)
 
+# When virtualizationmanager execs lkvm, run it in the kvmtool domain.
+domain_auto_trans(virtualizationmanager, kvmtool_exec, kvmtool)
+allow virtualizationmanager kvmtool:process sigkill;
+
 # Let virtualizationmanager kill crosvm.
 allow virtualizationmanager crosvm:process sigkill;
 
@@ -43,6 +47,8 @@ allow virtualizationmanager {
   apex_virt_data_file
   privapp_data_file
 }:file { getattr read write };
+# Search app data directory to locate microdroid config/disk images
+allow virtualizationmanager app_data_file:dir search;
 
 # shell_data_file is used for automated tests and manual debugging.
 allow virtualizationmanager shell_data_file:file { getattr read write };
@@ -56,6 +62,22 @@ allow virtualizationmanager staging_data_file:dir search;
 # Run derive_classpath in our domain
 allow virtualizationmanager derive_classpath_exec:file rx_file_perms;
 allow virtualizationmanager apex_mnt_dir:dir r_dir_perms;
+
+# derive_classpath needs dac_override to enumerate APEX classpath when starting microdroid
+# (domain is added to dac_override_allowed in domain.te to satisfy the neverallow)
+allow virtualizationmanager self:capability { dac_override dac_read_search };
+
+# Check for kvmtool availability flag in /data
+allow virtualizationmanager system_data_root_file:file getattr;
+
+# derive_classpath creates output via /proc/self/fd entries when enumerating APEX classpath
+allow virtualizationmanager self:dir add_name;
+allow virtualizationmanager self:file create;
+allow virtualizationmanager proc:filesystem associate;
+
+# KVM guest memory (kvm-gmem anon_inode) - required for VM execution via KVM
+allow virtualizationmanager self:anon_inode write;
+
 # Ignore harmless denials on /proc/self/fd
 dontaudit virtualizationmanager self:dir write;
 
@@ -65,6 +87,10 @@ neverallow { domain -virtualizationmanager } virtualizationmanager:vsock_socket 
 
 # Allow virtualizationmanager to inspect all hypervisor capabilities.
 get_prop(virtualizationmanager, hypervisor_prop)
+
+# Allow virtualizationmanager to read AVF Realm Computing control properties
+# (persist.avf.kvmtool, persist.avf.realm) set via setprop.
+get_prop(virtualizationmanager, avf_prop)
 get_prop(virtualizationmanager, hypervisor_restricted_prop)
 
 # Allow virtualizationmanager to be read custom pvmfw.img configuration
@@ -121,6 +147,9 @@ neverallow { domain recovery_only(`userdebug_or_eng(`-fastbootd')') } vendor_mic
 # Allow reading files under /proc/[crosvm pid]/, for collecting CPU & memory usage inside VM.
 r_dir_file(virtualizationmanager, crosvm);
 
+# Allow reading files under /proc/[kvmtool pid]/, for collecting CPU & memory usage inside VM.
+r_dir_file(virtualizationmanager, kvmtool);
+
 # For debug purposes we try to get the canonical path from /proc/self/fd/N. That triggers
 # a harmless denial for CompOS log files, so ignore that.
 dontaudit virtualizationmanager apex_module_data_file:dir search;
@@ -135,3 +164,4 @@ is_flag_enabled(RELEASE_AVF_ENABLE_NETWORK, `
     allow virtualizationmanager tun_device:chr_file rw_file_perms;
     allow virtualizationmanager vmnic:fd use;
 ')
+

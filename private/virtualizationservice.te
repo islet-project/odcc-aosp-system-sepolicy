@@ -122,6 +122,7 @@ neverallow {
 neverallow {
   domain
   -init
+  -kvmtool
   -virtualizationmanager
   -virtualizationservice
 } virtualizationservice_data_file:file { open create };

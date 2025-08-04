@@ -1,0 +1,16 @@
+# microdroid_dhcp is a transient domain for executing DHCP scripts
+
+type microdroid_dhcp, domain, coredomain;
+type microdroid_dhcp_exec, exec_type, file_type, system_file_type;
+
+# Allow microdroid_dhcp to read and execute shell scripts
+allow microdroid_dhcp shell_exec:file rx_file_perms;
+allow microdroid_dhcp system_file:file { rx_file_perms execute_no_trans };
+allow microdroid_dhcp toolbox_exec:file execute_no_trans;
+
+# Allow microdroid_dhcp to access network configuration
+allow microdroid_dhcp self:netlink_route_socket { create_socket_perms_no_ioctl nlmsg_write nlmsg_read };
+allow microdroid_dhcp self:global_capability_class_set net_admin;
+
+# Allow microdroid_dhcp to write kernel logs
+allow microdroid_dhcp kmsg_device:chr_file w_file_perms;

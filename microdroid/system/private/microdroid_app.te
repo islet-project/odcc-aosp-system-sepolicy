@@ -8,3 +8,36 @@
 
 type microdroid_app, domain, coredomain, microdroid_payload;
 type microdroid_app_exec, exec_type, file_type, system_file_type;
+
+# Fix microdroid_app default_prop denials (getattr, map)
+allow microdroid_app default_prop:file { getattr map };
+
+# Fix microdroid_app dalvik_config_prop denials
+allow microdroid_app dalvik_config_prop:file { read open getattr map };
+
+# Fix microdroid_app device_config_runtime_native_prop denials
+allow microdroid_app device_config_runtime_native_prop:file { read open getattr map };
+
+# Fix microdroid_app apex_info_file denials
+allow microdroid_app apex_info_file:file { getattr read };
+
+# Fix microdroid_app system_zoneinfo_file denials (search, getattr)
+# Note: system_zoneinfo_file is marked as unlabeled in microdroid
+allow microdroid_app unlabeled:dir search;
+allow microdroid_app unlabeled:dir getattr;
+allow microdroid_app unlabeled:file getattr;
+
+# Fix microdroid_app tmpfs memfd JIT denials (write, map, read, execute)
+allow microdroid_app tmpfs:file { write map read execute };
+
+# Fix microdroid_app console_device append denial
+allow microdroid_app console_device:chr_file { append };
+
+# Allow microdroid_app to use tmpfs for general operations
+allow microdroid_app tmpfs:dir { search read open getattr };
+
+# Fix microdroid_app apex_info_file open and map
+allow microdroid_app apex_info_file:file { open map };
+
+# Fix microdroid_app userfaultfd access for JIT compilation
+allow microdroid_app self:anon_inode { create ioctl };

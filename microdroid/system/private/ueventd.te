@@ -19,6 +19,7 @@ allow ueventd sysfs_type:dir { relabelfrom relabelto setattr };
 # so that it can relabel it to open_dice_device, so that microdroid_manager can access it.
 allow ueventd tmpfs:chr_file { relabelfrom rw_file_perms setattr };
 allow ueventd open_dice_device:chr_file relabelto;
+allow ueventd rsi_device:chr_file relabelto;
 allow ueventd dev_type:dir create_dir_perms;
 allow ueventd dev_type:lnk_file { create unlink };
 allow ueventd dev_type:chr_file { getattr create setattr unlink };
