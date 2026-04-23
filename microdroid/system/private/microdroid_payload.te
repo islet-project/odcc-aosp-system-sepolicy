@@ -60,13 +60,6 @@ allow microdroid_payload encryptedstore_file:file create_file_perms;
 # Payload can access devices labeled as payload accessible.
 allow microdroid_payload payload_accessible_device:chr_file rw_file_perms;
 
-# Allow payload to access RSI device for CCA attestation and measurement in Realm mode
-allow microdroid_payload rsi_device:chr_file rw_file_perms;
-
-# Allow payload to use TCP/UDP sockets for network communication in Realm
-allow microdroid_payload self:tcp_socket create_socket_perms;
-allow microdroid_payload self:udp_socket create_socket_perms_no_ioctl;
-
 # Never allow microdroid_payload to connect to vsock
 neverallow microdroid_payload self:vsock_socket connect;
 
