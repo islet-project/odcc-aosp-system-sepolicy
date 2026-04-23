@@ -1,15 +1,11 @@
 ## How to Extend SELinux Policy for Arm CCA Realms in AOSP Microdroid and AVF
 
-This policy tree has been extended to support **Arm Confidential Compute Architecture (CCA)**
-for secure Realm Computing on Android. The goal is to enable a trusted Realm VM (microdroid) to perform
-remote attestation via the Realm Security Interface (RSI), download an ML model over a
-RA-TLS channel, and execute it inside an isolated, hardware-enforced Realm — all while
-running under SELinux enforcing mode. The changes introduce new domains (`kvmtool`,
+This policy tree has been extended to support the **Arm Confidential Compute Architecture** (CCA) in Microdroid running in a Realm VM using the **Android Virtualization Framework** (AVF). The goal is to enable Microdroid to host Confidential Computing Services (**CC Services**) written in Java or Kotlin using a standard Android API. The Microdroid environment has been extended to provide **CC Services** with Arm CCA remote attestation, provisioning of confidential data over a RA-TLS channel, and sealing key derivation functionality. The changes introduce new domains (`kvmtool`,
 `microdroid_dhcp`, `avf_prop`) and extend existing ones (`virtualizationmanager`, `toolbox`,
 `microdroid_manager`, `microdroid_payload`, `microdroid_app`) to cover the full lifecycle:
-VM launch via lkvm, guest networking (DHCP/NTP), RSI-based attestation, encrypted model
-download, and ART-based payload execution. The result is a fully enforcing SELinux policy
-for the Realm Computing workload.
+VM launch via lkvm, guest networking (DHCP/NTP), access to the Realm Services Interface (RSI) driver, confidential data
+provisioning, and DEX payload execution under the Dalvik VM. The result is a fully enforcing SELinux policy
+for the Microdroid and CC Services running in a Realm.
 
 ## SELinux Rules — Per Domain
 
@@ -52,7 +48,7 @@ for the Realm Computing workload.
 | Rule | Reason |
 |---|---|
 | `system_internal_prop(avf_prop)` | Allows `shell` (adb) to `setprop persist.avf.kvmtool` and `persist.avf.realm`. Using `system_vendor_config_prop` would be wrong — it is blocked by a neverallow: `neverallow { domain -init -vendor_init } system_vendor_config_prop:...` |
-| `get_prop(virtualizationmanager, avf_prop)` | `virtmgr` reads `persist.avf.kvmtool` (whether to use lkvm instead of crosvm) and `persist.avf.realm` (whether to launch a Realm Computing VM) |
+| `get_prop(virtualizationmanager, avf_prop)` | `virtmgr` reads `persist.avf.kvmtool` (whether to use lkvm instead of crosvm) and `persist.avf.realm` (whether to launch a Realm VM) |
 | `set_prop(shell, avf_prop)` | Allows control via `adb shell` (testing, feature enabling) |
 
 ---
@@ -111,12 +107,12 @@ for the Realm Computing workload.
 
 | Resource | Permissions | Reason |
 |---|---|---|
-| `self:tcp_socket` | `{ create setopt connect name_connect getopt }` | `ratls_get` establishes an HTTPS connection to the provisioning server using the `reqwest` Rust library to download the ML model |
-| `port:tcp_socket name_connect` | port 1337 | The provisioning server listens on non-standard port 1337 |
-| `rsi_device:chr_file` | `{ read write open ioctl }` | `ratls_get` retrieves the Realm Attestation Token via RSI and embeds it in the TLS certificate (RA-TLS). The server verifies the client is running in a trusted Realm before issuing the model. |
+| `self:tcp_socket` | `{ create setopt connect name_connect getopt }` | `ratls_get` establishes an HTTPS/RA-TLS connection to the provisioning server using the `reqwest` Rust library to download confidential file |
+| `port:tcp_socket name_connect` | TCP port | The provisioning server listens on a TCP port |
+| `rsi_device:chr_file` | `{ read write open ioctl }` | `ratls_get` retrieves the Realm Attestation Token via RSI and embeds it in the TLS certificate (RA-TLS). An external Verifier verifies the attestation token to check if the CCA Platform and the Realm content are trustworthy  before issuing the confidential file. |
 | `proc_overcommit_memory` | `r_file_perms` | `reqwest` reads `/proc/sys/vm/overcommit_memory` at initialization — standard Rust runtime behavior |
-| `encryptedstore_file:dir` | `{ search write add_name }` | `ratls_get` creates the model file in encrypted storage, which is unique to this VM instance (dm-crypt, key from RSI sealing key) |
-| `encryptedstore_file:file` | `{ create write open getattr }` | Writing the downloaded model (`demo-model.tflite`, ~100 MB) |
+| `encryptedstore_file:dir` | `{ search write add_name }` | `ratls_get` creates a provisioned confidential file in the encrypted storage |
+| `encryptedstore_file:file` | `{ create write open getattr }` | Writing the provisioned confidential file |
 
 ---
 
@@ -126,7 +122,7 @@ for the Realm Computing workload.
 
 | Resource | Permissions | Reason |
 |---|---|---|
-| `rsi_device:chr_file` | `rw_file_perms` | Arm CCA Realm Security Interface — the primary attestation mechanism. Payload can call: `RSI_MEASUREMENT_EXTEND`, `RSI_ATTESTATION_TOKEN`, `RSI_MEASUREMENT_READ`. Without this the payload cannot prove it is running in a trusted Realm. |
+| `rsi_device:chr_file` | `rw_file_perms` | Access to the RSI driver. Microdroid Manager can call: `RSI_MEASUREMENT_EXTEND`, `RSI_ATTESTATION_TOKEN`, `RSI_MEASUREMENT_READ`. |
 | `tcp_socket` + `udp_socket` | `create_socket_perms` | BertQA service communicates over the network (e.g. answering queries from the host via vsock/TCP) |
 
 ---
