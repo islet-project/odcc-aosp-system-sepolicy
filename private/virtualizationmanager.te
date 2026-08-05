@@ -85,6 +85,10 @@ dontaudit virtualizationmanager self:dir write;
 allow virtualizationmanager self:vsock_socket { create_socket_perms_no_ioctl listen accept };
 neverallow { domain -virtualizationmanager } virtualizationmanager:vsock_socket { accept bind create connect listen };
 
+# Allow virtualizationmanager to make TCP connections
+allow virtualizationmanager self:tcp_socket create_stream_socket_perms;
+allow virtualizationmanager port:tcp_socket name_connect;
+
 # Allow virtualizationmanager to inspect all hypervisor capabilities.
 get_prop(virtualizationmanager, hypervisor_prop)
 

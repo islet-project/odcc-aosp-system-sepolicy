@@ -113,6 +113,7 @@
 /system/bin/perfetto             u:object_r:perfetto_exec:s0
 /system/bin/traced               u:object_r:traced_exec:s0
 /system/bin/traced_probes        u:object_r:traced_probes_exec:s0
+/system/bin/ratls_get            u:object_r:ratls_get_exec:s0
 /system/etc/cgroups\.json               u:object_r:cgroup_desc_file:s0
 /system/etc/task_profiles/cgroups_[0-9]+\.json               u:object_r:cgroup_desc_api_file:s0
 /system/etc/event-log-tags              u:object_r:system_event_log_tags_file:s0
