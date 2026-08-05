@@ -1,0 +1,25 @@
+type ratls_get, domain, coredomain;
+type ratls_get_exec, exec_type, file_type, system_file_type;
+
+# Allow ratls_get to use file descriptors inherited from microdroid_manager
+allow ratls_get microdroid_manager:fd use;
+
+# Let ratls_get create a vsock connection back to the host VM
+allow ratls_get self:vsock_socket { create_socket_perms_no_ioctl };
+
+# Allow ratls_get to read the CID of the VM.
+allow ratls_get vsock_device:chr_file { ioctl open read };
+
+# Allow ratls_get access rsi_device to retrieve the CCA attestation token
+allow ratls_get rsi_device:chr_file { read write open ioctl };
+
+# Allow ratls_get to read /proc/sys/vm/overcommit_memory
+allow ratls_get proc_overcommit_memory:file r_file_perms;
+
+# Allow ratls_get to write downloaded model to encryptedstore
+allow ratls_get encryptedstore_file:dir { search write add_name };
+allow ratls_get encryptedstore_file:file { create write open getattr };
+
+# Allow ratls_get to write kernel logs
+allow ratls_get kmsg_device:chr_file w_file_perms;
+allow ratls_get kmsg_debug_device:chr_file { w_file_perms ioctl };
