@@ -82,6 +82,9 @@ domain_auto_trans(microdroid_manager, kexec_exec, kexec)
 # Allow microdroid_manager to run ratls_get command
 domain_auto_trans(microdroid_manager, ratls_get_exec, ratls_get)
 
+# Allow microdroid_manager to run nts_vsock_client command
+domain_auto_trans(microdroid_manager, nts_vsock_client_exec, nts_vsock_client)
+
 # Let microdroid_manager kernel-log.
 allow microdroid_manager kmsg_device:chr_file w_file_perms;
 
@@ -172,4 +175,5 @@ neverallow microdroid_manager {
   -zipfuse
   -kexec
   -ratls_get
+  -nts_vsock_client
 }:process transition;

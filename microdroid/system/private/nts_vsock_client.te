@@ -1,0 +1,21 @@
+type nts_vsock_client, domain, coredomain;
+type nts_vsock_client_exec, exec_type, file_type, system_file_type;
+
+# Allow nts_vsock_client to use file descriptors inherited from microdroid_manager
+allow nts_vsock_client microdroid_manager:fd use;
+
+# Let nts_vsock_client create a vsock connection back to the host VM
+allow nts_vsock_client self:vsock_socket { create_socket_perms_no_ioctl };
+
+# Allow nts_vsock_client to read the CID of the VM.
+allow nts_vsock_client vsock_device:chr_file { ioctl open read };
+
+# Allow nts_vsock_client to read /proc/sys/vm/overcommit_memory
+allow nts_vsock_client proc_overcommit_memory:file r_file_perms;
+
+# Allow nts_vsock_client to write kernel logs
+allow nts_vsock_client kmsg_device:chr_file w_file_perms;
+allow nts_vsock_client kmsg_debug_device:chr_file { w_file_perms ioctl };
+
+# Allow nts_vsock_client to set the system time
+allow nts_vsock_client self:global_capability_class_set sys_time;
