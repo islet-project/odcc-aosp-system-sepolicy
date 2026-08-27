@@ -89,6 +89,11 @@ neverallow { domain -virtualizationmanager } virtualizationmanager:vsock_socket 
 allow virtualizationmanager self:tcp_socket create_stream_socket_perms;
 allow virtualizationmanager port:tcp_socket name_connect;
 
+# allow virtualizationmanager to use UDP sockets
+allow virtualizationmanager self:udp_socket {
+        bind create connect getattr node_bind read write recvfrom sendto getopt setopt };
+allow virtualizationmanager node:udp_socket node_bind;
+
 # Allow virtualizationmanager to inspect all hypervisor capabilities.
 get_prop(virtualizationmanager, hypervisor_prop)
 
